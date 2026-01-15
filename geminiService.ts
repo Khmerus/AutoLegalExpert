@@ -32,7 +32,7 @@ export const analyzeDocuments = async (files: DocumentFile[], stage: string): Pr
         systemInstruction: SYSTEM_INSTRUCTION,
         temperature: 0.1,
         topP: 0.95,
-        thinkingConfig: { thinkingBudget: 28000 }
+        thinkingConfig: { thinkingBudget: 32000 }
       }
     });
 
@@ -40,8 +40,8 @@ export const analyzeDocuments = async (files: DocumentFile[], stage: string): Pr
   } catch (error: any) {
     console.error("Gemini API Error:", error);
     if (error.message?.includes("Requested entity was not found")) {
-        return "Ошибка: Модель 'gemini-3-pro-preview' не найдена или недоступна для вашего ключа.";
+        return "Ошибка: Модель 'gemini-3-pro-preview' не доступна. Проверьте настройки API ключа.";
     }
-    return `Ошибка анализа: ${error.message || "Неизвестная ошибка"}`;
+    return `Ошибка анализа: ${error.message || "Неизвестная ошибка связи с AI"}`;
   }
 };
