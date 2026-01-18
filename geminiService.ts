@@ -4,11 +4,14 @@ import { DocumentFile } from "./types";
 import { SYSTEM_INSTRUCTION, getPromptByStage } from "./prompts";
 
 export const analyzeDocuments = async (files: DocumentFile[], stage: string): Promise<string> => {
-  if (!process.env.API_KEY) {
-    throw new Error("API Key not found in environment variables.");
+  const apiKey = process.env.API_KEY;
+  
+  if (!apiKey || apiKey === "undefined") {
+    throw new Error("API ключ не найден. Добавьте переменную API_KEY в настройки Vercel.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Создаем экземпляр прямо перед вызовом, как требует инструкция для Vercel/Live окружений
+  const ai = new GoogleGenAI({ apiKey });
   
   const fileParts = files.map(file => ({
     inlineData: {
@@ -36,12 +39,28 @@ export const analyzeDocuments = async (files: DocumentFile[], stage: string): Pr
       }
     });
 
-    return response.text || "Не удалось получить ответ от экспертной системы.";
+    if (!response.text) {
+      return "Модель вернула пустой ответ. Попробуйте загрузить документы более четко.";
+    }
+
+    return response.text;
   } catch (error: any) {
     console.error("Gemini API Error:", error);
-    if (error.message?.includes("Requested entity was not found")) {
-        return "Ошибка: Модель 'gemini-3-pro-preview' не доступна. Проверьте настройки API ключа.";
+    
+    const errorMsg = error.message || "";
+    
+    if (errorMsg.includes("API key not valid") || errorMsg.includes("API_KEY_INVALID")) {
+      return "ОШИБКА: Ваш API-ключ недействителен. Пожалуйста, создайте новый ключ на aistudio.google.com и обновите настройки в Vercel (не забудьте сделать Redeploy).";
     }
-    return `Ошибка анализа: ${error.message || "Неизвестная ошибка связи с AI"}`;
+    
+    if (errorMsg.includes("Requested entity was not found")) {
+      return "Ошибка: Модель 'gemini-3-pro-preview' недоступна для вашего ключа. Попробуйте использовать другой аккаунт Google AI Studio.";
+    }
+
+    if (errorMsg.includes("billing")) {
+      return "Ошибка: Для использования этой модели необходимо подключить платный аккаунт (Billing) в Google Cloud.";
+    }
+
+    return `Ошибка анализа: ${errorMsg}`;
   }
 };
